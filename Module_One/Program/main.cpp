@@ -1,6 +1,5 @@
 #include <iostream>
 #include <string>
-#include <unordered_map>
 
 #define I 1
 #define V 5
@@ -10,6 +9,9 @@
 #define D 500
 #define M 1000
 
+using std::cout;
+
+// Used to validate substraction pairs
 static bool is_pair(int Value, int NextValue)
 {
     switch (Value)
@@ -21,12 +23,12 @@ static bool is_pair(int Value, int NextValue)
     }
 }
 
-//Could have used std::unordered_map here as well.
+// Could have used std::unordered_map here as well.
 static int map_symbol(char Symbol)
 {
     switch (Symbol)
     {
-        case 'I': return I; 
+        case 'I': return I;
         case 'V': return V;
         case 'X': return X;
         case 'L': return L;
@@ -37,64 +39,74 @@ static int map_symbol(char Symbol)
     }
 }
 
-static int roman_to_decimal(std::string& Numeral)
+static int symbol_index(char Symbol)
 {
-    if (Numeral.size() == 0)
+    switch (Symbol)
+    {
+        case 'I': return 0;
+        case 'V': return 1;
+        case 'X': return 2;
+        case 'L': return 3;
+        case 'C': return 4;
+        case 'D': return 5;
+        case 'M': return 6;
+        default: return -1;
+    }
+}
+
+static int roman_to_decimal(const std::string& Numeral)
+{
+    if (Numeral.empty())
     {
         return 0;
     }
-    
-    std::unordered_map<char, int> SeenSymbols;
+
+    unsigned int SeenSymbols[7] = {0};
     for (char Symbol : Numeral)
     {
-        if (map_symbol(Symbol) == 0)
+        int SymbolIndex = symbol_index(Symbol);
+        if (SymbolIndex == -1)
         {
             return 0;
         }
 
-        if (Symbol == 'V' || Symbol == 'L' || Symbol == 'D') 
+        unsigned int& Count = SeenSymbols[SymbolIndex];
+        if (Symbol == 'V' || Symbol == 'L' || Symbol == 'D')
         {
-           if (SeenSymbols[Symbol] != 0)
-           {
-               return 0;
-           }
+            if (Count != 0)
+            {
+                return 0;
+            }
         }
 
-        int Count = SeenSymbols[Symbol]++;
-        if (Count > 3)
+        if (++Count > 3)
         {
-           return 0;
+            return 0;
         }
     }
 
     int Result = 0;
     int LastParse = 0;
-    for (int i = 0; i < Numeral.size(); i++)
+    for (size_t i = 0; i < Numeral.size(); i++)
     {
         int Value = map_symbol(Numeral[i]);
-        if (i == Numeral.size() - 1) //Last symbol in string
+        if (i == Numeral.size() - 1) // Last symbol in string
         {
-            if (LastParse != 0)
+            if (LastParse != 0 && LastParse < Value)
             {
-                if (LastParse > Value)
-                {
-                    Result += Value;
-                }
-                else //Invalid input
-                {
-                    Result =  0;
-                }
+                Result = 0;
+                break;
             }
-            else //Only symbol in input
+            else
             {
-                Result = Value;
+                Result += Value;
             }
 
             break;
         }
 
         int NextValue = map_symbol(Numeral[i + 1]);
-        if (Value < NextValue) //Subtraction (2 symbol)
+        if (Value < NextValue) // Subtraction (2 symbol)
         {
             /* Make sure this is a valid subtraction pair
              *
@@ -103,20 +115,19 @@ static int roman_to_decimal(std::string& Numeral)
              *
              * Pairs of symbols must be < Last Parse e.g (IXIX, IIV) is invalid
              */
-            if (!is_pair(Value, NextValue)
-                    && LastParse != 0
-                    && LastParse <= NextValue - Value)
+            if (!is_pair(Value, NextValue) ||
+                (LastParse != 0 && LastParse <= NextValue - Value))
             {
                 Result = 0;
                 break;
             }
 
             Result += LastParse = NextValue - Value;
-            i++; //Skip symbol;
+            i++; // Skip symbol;
         }
-        else //Addition (1 symbol)
+        else // Addition (1 symbol)
         {
-            //Single symbols can be <= LastParse e.g (II, XX, CC) is valid
+            // Single symbols can be <= LastParse e.g (II, XX, CC) is valid
             if (LastParse != 0 && LastParse < Value)
             {
                 Result = 0;
@@ -133,17 +144,16 @@ static int roman_to_decimal(std::string& Numeral)
 int main()
 {
     std::string Input;
-    printf("Roman Numeral: ");
+    cout << "Roman Numeral: ";
     std::cin >> Input;
 
     int Converted = roman_to_decimal(Input);
-
     if (Converted == 0)
     {
-        printf("'%s' is an invalid Roman Numeral.\n", Input.c_str());
+        cout << Input << " is an invalid roman numeral\n";
     }
     else
     {
-        printf("Roman '%s' to decimal: %i\n", Input.c_str(), Converted);
+        cout << "Roman "  << Input << " to decimal: " <<  Converted << '\n';
     }
 }
