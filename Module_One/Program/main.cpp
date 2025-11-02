@@ -108,11 +108,8 @@ static int roman_to_decimal(const std::string& Numeral)
                 Result = INVALID_NUMERAL;
                 break;
             }
-            else
-            {
-                Result += Value;
-            }
 
+            Result += Value;
             break;
         }
 
@@ -167,4 +164,5 @@ int main()
     {
         cout << "Roman "  << Input << " to decimal: " <<  Converted << '\n';
     }
+
 }
