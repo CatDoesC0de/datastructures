@@ -9,6 +9,8 @@
 #define D 500
 #define M 1000
 
+#define INVALID_NUMERAL 0
+
 using std::cout;
 
 // Used to validate substraction pairs
@@ -35,7 +37,7 @@ static int map_symbol(char Symbol)
         case 'C': return C;
         case 'D': return D;
         case 'M': return M;
-        default: return 0;
+        default: return INVALID_NUMERAL;
     }
 }
 
@@ -56,37 +58,46 @@ static int symbol_index(char Symbol)
 
 static int roman_to_decimal(const std::string& Numeral)
 {
+    //Empty string, nothing to parse
     if (Numeral.empty())
     {
-        return 0;
+        return INVALID_NUMERAL;
     }
 
-    unsigned int SeenSymbols[7] = {0};
+    int SeenSymbols[7] = {0};
+
+    //First pass for basic validation without parsing values
     for (char Symbol : Numeral)
     {
         int SymbolIndex = symbol_index(Symbol);
+
+        //Check if this symbol is a valid symbol
         if (SymbolIndex == -1)
         {
-            return 0;
+            return INVALID_NUMERAL;
         }
 
-        unsigned int& Count = SeenSymbols[SymbolIndex];
-        if (Symbol == 'V' || Symbol == 'L' || Symbol == 'D')
+        int& Count = SeenSymbols[SymbolIndex];
+        // Return invalid if these symbols appear more than once
+        if ((Symbol == 'V' || Symbol == 'L' || Symbol == 'D')
+                && Count != 0)
         {
-            if (Count != 0)
-            {
-                return 0;
-            }
+            return INVALID_NUMERAL;
         }
 
+        //Symbols can't appear more than 3 times
         if (++Count > 3)
         {
-            return 0;
+            return INVALID_NUMERAL;
         }
     }
 
-    int Result = 0;
+    int Result = INVALID_NUMERAL;
+
+    //Keeps track of the last "value" parsed to check for descending order
     int LastParse = 0;
+    
+    //Second pass to parse values and enforce descending order for values
     for (size_t i = 0; i < Numeral.size(); i++)
     {
         int Value = map_symbol(Numeral[i]);
@@ -94,7 +105,7 @@ static int roman_to_decimal(const std::string& Numeral)
         {
             if (LastParse != 0 && LastParse < Value)
             {
-                Result = 0;
+                Result = INVALID_NUMERAL;
                 break;
             }
             else
@@ -118,7 +129,7 @@ static int roman_to_decimal(const std::string& Numeral)
             if (!is_pair(Value, NextValue) ||
                 (LastParse != 0 && LastParse <= NextValue - Value))
             {
-                Result = 0;
+                Result = INVALID_NUMERAL;
                 break;
             }
 
@@ -130,7 +141,7 @@ static int roman_to_decimal(const std::string& Numeral)
             // Single symbols can be <= LastParse e.g (II, XX, CC) is valid
             if (LastParse != 0 && LastParse < Value)
             {
-                Result = 0;
+                Result = INVALID_NUMERAL;
                 break;
             }
 
@@ -148,7 +159,7 @@ int main()
     std::cin >> Input;
 
     int Converted = roman_to_decimal(Input);
-    if (Converted == 0)
+    if (Converted == INVALID_NUMERAL)
     {
         cout << Input << " is an invalid roman numeral\n";
     }
