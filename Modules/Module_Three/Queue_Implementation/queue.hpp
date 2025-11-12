@@ -1,72 +1,65 @@
 #ifndef H_RING_BUFFER_QUEUE
 #define H_RING_BUFFER_QUEUE
 
+#include <array>
 #include <cstddef>
-#include <memory>
 #include <stdexcept>
 
-template <typename type_, typename allocator_ = std::allocator<type_>>
-class ring_buffer_queue
+template <typename type_, std::size_t capacity_> class ring_buffer_queue
 {
     public:
-    ring_buffer_queue(int queue_size = 5)
-        : front_index(0),
-          rear_index(0),
-          capacity(queue_size + 1),
-          elements(nullptr)
-    {
-        allocator_ allocator;
-        elements = allocator.allocate(capacity); // + 1 for the reserved slot
-    }
-
+        
+    ring_buffer_queue() : front_index(0), rear_index(0) {}
     ring_buffer_queue(const ring_buffer_queue& other)
-        : front_index(other.front_index),
-          rear_index(other.rear_index),
-          capacity(other.capacity),
-          elements(nullptr)
     {
         if (this == &other) return;
-        copy_elements(other.elements);
+        front_index = other.front_index;
+        rear_index = other.rear_index;
+
+        copy_from(other);
     }
 
     ring_buffer_queue& operator=(const ring_buffer_queue& other)
     {
         if (this == &other) return *this;
-
         front_index = other.front_index;
         rear_index = other.rear_index;
-        capacity = other.capacity;
 
-        destroy_internal();
-        copy_elements(other.elements);
+        copy_from(other);
         return *this;
     }
 
     ring_buffer_queue(ring_buffer_queue&& other)
     {
-        swap(std::move(other));
+        front_index = other.front_index;
+        rear_index = other.rear_index;
+        elements = std::move(other.elements);
+
+        other.front_index = 0;
+        other.rear_index = 0;
     }
 
     ring_buffer_queue& operator=(ring_buffer_queue&& other)
     {
-        swap(std::move(other));
+        front_index = other.front_index;
+        rear_index = other.rear_index;
+        elements = std::move(other.elements);
+
+        other.front_index = 0;
+        other.rear_index = 0;
         return *this;
     }
 
     ~ring_buffer_queue()
     {
-        if (elements)
-        {
-            destroy_elements();
-            allocator_ allocator;
-            allocator.deallocate(elements, capacity);
-        }
+        while (!empty())
+            remove();
     }
 
     // Adds an element to the end of the queue
     void add(const type_& value)
     {
-        if (wrapping_increment(rear_index) == front_index)
+        if (full())
         {
             throw std::out_of_range("Queue is full.");
         }
@@ -78,7 +71,7 @@ class ring_buffer_queue
     // Removes the first element in the queue
     void remove()
     {
-        if (front_index == rear_index)
+        if (empty())
         {
             throw std::out_of_range("Queue is empty.");
         }
@@ -102,19 +95,17 @@ class ring_buffer_queue
     // Clears the queue, destroying all the objects its holding
     void clear()
     {
+        while (!empty())
+            remove();
+
         front_index = 0;
         rear_index = 0;
-
-        if (elements)
-        {
-            destroy_elements();
-        }
     }
 
     // Returns the element at the front of the queue
     type_ front() const
     {
-        if (front_index == rear_index)
+        if (empty())
         {
             throw std::out_of_range("Queue is empty.");
         }
@@ -125,67 +116,34 @@ class ring_buffer_queue
     // Returns the element at the end of the queue
     type_ back() const
     {
-        if (rear_index == front_index)
+        if (empty())
         {
-            throw std::out_of_range("Queue is full.");
+            throw std::out_of_range("Queue is empty.");
         }
 
         return elements[rear_index];
     }
 
     private:
-    void copy_elements(type_* other_elements)
+    void copy_from(const ring_buffer_queue& source)
     {
-        allocator_ allocator;
-        elements = allocator.allocate(capacity);
-        for (size_t copy_index = wrapping_increment(front_index);
-             copy_index != rear_index;
+        for (std::size_t copy_index = wrapping_increment(front_index);
+             copy_index != wrapping_increment(rear_index);
              copy_index = wrapping_increment(copy_index))
         {
             std::construct_at(&elements[copy_index],
-                              other_elements[copy_index]);
+                              source.elements[copy_index]);
         }
     }
 
-    void destroy_elements()
+    std::size_t wrapping_increment(std::size_t index) const
     {
-        for (size_t destroy_index = wrapping_increment(front_index);
-             destroy_index != wrapping_increment(rear_index);
-             destroy_index = wrapping_increment(destroy_index))
-        {
-            std::destroy_at(&elements[destroy_index]);
-        }
+        return (index + 1) % (capacity_ + 1);
     }
 
-    void destroy_internal()
-    {
-        destroy_elements();
-        allocator_ allocator;
-        allocator.deallocate(elements, capacity);
-    }
-
-    void swap(ring_buffer_queue&& other)
-    {
-        front_index = other.front_index;
-        rear_index = other.rear_index;
-        capacity = other.capacity;
-        elements = other.elements;
-
-        other.front_index = 0;
-        other.rear_index = 0;
-        other.capacity = 0;
-        other.elements = nullptr;
-    }
-
-    size_t wrapping_increment(size_t index) const
-    {
-        return (index + 1) % capacity;
-    }
-
-    type_* elements;
-    size_t capacity;
-    size_t front_index;
-    size_t rear_index;
+    std::array<type_, capacity_ + 1> elements;
+    std::size_t front_index;
+    std::size_t rear_index;
 };
 
 #endif
