@@ -65,7 +65,7 @@ template <typename type_, std::size_t capacity_> class ring_buffer_queue
         }
 
         rear_index = wrapping_increment(rear_index);
-        std::construct_at(&elements[rear_index], value);
+        elements[rear_index] = value;
     }
 
     // Removes the first element in the queue
@@ -77,7 +77,6 @@ template <typename type_, std::size_t capacity_> class ring_buffer_queue
         }
 
         front_index = wrapping_increment(front_index);
-        std::destroy_at(&elements[front_index]);
     }
 
     // Returns true if the queue is empty
@@ -125,6 +124,7 @@ template <typename type_, std::size_t capacity_> class ring_buffer_queue
     }
 
     private:
+    constexpr static std::size_t N = capacity_ + 1;
     void copy_from(const ring_buffer_queue& source)
     {
         for (std::size_t copy_index = wrapping_increment(front_index);
@@ -138,10 +138,10 @@ template <typename type_, std::size_t capacity_> class ring_buffer_queue
 
     std::size_t wrapping_increment(std::size_t index) const
     {
-        return (index + 1) % (capacity_ + 1);
+        return (index + 1) % N;
     }
 
-    std::array<type_, capacity_ + 1> elements;
+    std::array<type_, N> elements;
     std::size_t front_index;
     std::size_t rear_index;
 };
